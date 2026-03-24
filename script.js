@@ -5,6 +5,7 @@ const canvasCtx = canvasElement.getContext('2d');
 const silhouetteImg = document.getElementById('silhouette');
 const timerDiv = document.getElementById('timer');
 const levelIndicator = document.getElementById('levelIndicator');
+const collageContainer = document.getElementById('collageContainer');
 
 const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
@@ -15,7 +16,7 @@ const restartBtn = document.getElementById('restartBtn');
 const resetBtn = document.getElementById('resetBtn');
 const victoryRestartBtn = document.getElementById('victoryRestartBtn');
 
-// --- 2. ГЕНЕРАТОР ЗВУКА (Web Audio API) ---
+// --- 2. ГЕНЕРАТОР ЗВУКА ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function playBeep(frequency, duration, type = 'sine') {
@@ -36,44 +37,9 @@ function playBeep(frequency, duration, type = 'sine') {
     oscillator.stop(audioCtx.currentTime + duration);
 }
 
-// --- 3. МАССИВ С УРОВНЯМИ (ПОЗАМИ) ---
+// --- 3. МАССИВ С УРОВНЯМИ ---
 const levels = [
     {
-        // УРОВЕНЬ 2: Уверенная А-стойка
-       image: "pose6.png", 
-        timeAllowed: 15,    
-        checkPose: function(landmarks) {
-            const ls = landmarks[11], rs = landmarks[12]; 
-            const lw = landmarks[15], rw = landmarks[16]; 
-            const lh = landmarks[23], rh = landmarks[24]; 
-            const lk = landmarks[25], rk = landmarks[26]; 
-
-            const pointsToCheck = [ls, rs, lw, rw, lh, rh, lk, rk];
-            for (let i = 0; i < pointsToCheck.length; i++) {
-                if (pointsToCheck[i].visibility < 0.4) return false;
-            }
-
-            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
-            
-            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
-
-            const avgShoulderY = (ls.y + rs.y) / 2;
-            const avgHipY = (lh.y + rh.y) / 2;
-
-            const torsoBentForward = Math.abs(avgHipY - avgShoulderY) < (torsoLength * 0.7);
-
-            const lowestWrist = lw.y > rw.y ? lw : rw;   
-            const highestWrist = lw.y < rw.y ? lw : rw;  
-
-            const oneArmDown = lowestWrist.y > avgHipY;
-            const oneArmUp = highestWrist.y < (avgHipY + torsoLength * 0.2);
-            const armsSpread = Math.abs(lowestWrist.x - highestWrist.x) > (torsoLength * 1.0);
-
-            return torsoBentForward && oneArmDown && oneArmUp && armsSpread;
-        }
-    },
-    {
-        // УРОВЕНЬ 1: Скрученный Треугольник
         image: "pose1.png",
         timeAllowed: 20,    
         checkPose: function(landmarks) {
@@ -90,17 +56,39 @@ const levels = [
             function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
             const bodyScale = (distance(leftShoulder, rightShoulder) + distance(leftHip, rightHip)) / 2;
 
-            const wristAboveShoulder = leftWrist.y < leftShoulder.y;
-            const wristVerticallyAligned = Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5);
-            const rightWristBelowHip = rightWrist.y > rightHip.y;
-            const rightWristCloseToFoot = distance(rightWrist, rightAnkle) < (bodyScale * 2.0);
-            const shouldersAlignedCorrectly = leftShoulder.y < rightShoulder.y;
-
-            return wristAboveShoulder && wristVerticallyAligned && rightWristBelowHip && rightWristCloseToFoot && shouldersAlignedCorrectly;
+            return leftWrist.y < leftShoulder.y && Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5) && 
+                   rightWrist.y > rightHip.y && distance(rightWrist, rightAnkle) < (bodyScale * 2.0) && 
+                   leftShoulder.y < rightShoulder.y;
         }
     },
     {
-        // УРОВЕНЬ 3: Правая рука на талии, левая вытянута
+       image: "pose6.png", 
+        timeAllowed: 15,    
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; 
+            const lw = landmarks[15], rw = landmarks[16]; 
+            const lh = landmarks[23], rh = landmarks[24]; 
+            const lk = landmarks[25], rk = landmarks[26]; 
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, lk, rk];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.4) return false;
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            
+            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
+            const avgShoulderY = (ls.y + rs.y) / 2, avgHipY = (lh.y + rh.y) / 2;
+
+            const lowestWrist = lw.y > rw.y ? lw : rw;   
+            const highestWrist = lw.y < rw.y ? lw : rw;  
+
+            return Math.abs(avgHipY - avgShoulderY) < (torsoLength * 0.7) && 
+                   lowestWrist.y > avgHipY && highestWrist.y < (avgHipY + torsoLength * 0.2) && 
+                   Math.abs(lowestWrist.x - highestWrist.x) > (torsoLength * 1.0);
+        }
+    },
+    {
         image: "pose3.png", 
         timeAllowed: 12,    
         checkPose: function(landmarks) {
@@ -117,16 +105,11 @@ const levels = [
             function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
             const bodyScale = (distance(ls, rs) + distance(lh, rh)) / 2;
 
-            const rightHandOnHip = distance(rw, rh) < (bodyScale * 0.7);
-            const leftArmExtended = Math.abs(lw.x - ls.x) > (bodyScale * 0.8);
-            const leftArmUp = lw.y < (ls.y + bodyScale * 0.2);
-            const legsApart = Math.abs(la.x - ra.x) > (bodyScale * 0.9);
-
-            return rightHandOnHip && leftArmExtended && leftArmUp && legsApart;
+            return distance(rw, rh) < (bodyScale * 0.7) && Math.abs(lw.x - ls.x) > (bodyScale * 0.8) && 
+                   lw.y < (ls.y + bodyScale * 0.2) && Math.abs(la.x - ra.x) > (bodyScale * 0.9);
         }
     },
     {
-        // УРОВЕНЬ 4: Старт бегуна / Глубокий выпад
         image: "pose4.png", 
         timeAllowed: 15,    
         checkPose: function(landmarks) {
@@ -143,20 +126,14 @@ const levels = [
             function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
 
             const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
+            const averageHipY = (lh.y + rh.y) / 2, averageAnkleY = (la.y + ra.y) / 2;
 
-            const armsSpread = distance(lw, rw) > (torsoLength * 1.2);
-            const handsBelowShoulders = (lw.y > ls.y) && (rw.y > rs.y);
-            const torsoLeaning = Math.abs(ls.x - lh.x) > (torsoLength * 0.3);
-
-            const averageHipY = (lh.y + rh.y) / 2;
-            const averageAnkleY = (la.y + ra.y) / 2;
-            const kneesBent = Math.abs(averageHipY - averageAnkleY) < (torsoLength * 1.3);
-
-            return armsSpread && handsBelowShoulders && torsoLeaning && kneesBent;
+            return distance(lw, rw) > (torsoLength * 1.2) && (lw.y > ls.y) && (rw.y > rs.y) && 
+                   Math.abs(ls.x - lh.x) > (torsoLength * 0.3) && 
+                   Math.abs(averageHipY - averageAnkleY) < (torsoLength * 1.3);
         }
     },
     {
-        // УРОВЕНЬ 5: Отклонение назад с поднятой рукой
         image: "pose5.png", 
         timeAllowed: 15,    
         checkPose: function(landmarks) {
@@ -171,18 +148,11 @@ const levels = [
             }
 
             function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
-            
             const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
 
-            const rightArmUp = rw.y < (rs.y - torsoLength * 0.4);
-            const leftArmDown = lw.y > lh.y;
-
-            const midShoulderX = (ls.x + rs.x) / 2;
-            const midHipX = (lh.x + rh.x) / 2;
-            const leaning = Math.abs(midShoulderX - midHipX) > (torsoLength * 0.25);
-            const legsApart = Math.abs(la.x - ra.x) > (torsoLength * 0.7);
-
-            return rightArmUp && leftArmDown && leaning && legsApart;
+            return rw.y < (rs.y - torsoLength * 0.4) && lw.y > lh.y && 
+                   Math.abs((ls.x + rs.x) / 2 - (lh.x + rh.x) / 2) > (torsoLength * 0.25) && 
+                   Math.abs(la.x - ra.x) > (torsoLength * 0.7);
         }
     }
 ];
@@ -193,8 +163,14 @@ let timeLeft = 0;
 let timerInterval;
 let isGameOver = false;
 let gameStarted = false; 
+let capturedImages = []; // Массив для хранения победных снимков
 
 function startLevel(index) {
+    // Если начинаем с первого уровня, очищаем галерею
+    if (index === 0) {
+        capturedImages = [];
+    }
+
     if (index >= levels.length) {
         winGame();
         return;
@@ -252,7 +228,14 @@ function winGame() {
     timerDiv.classList.remove('danger');
     levelIndicator.style.opacity = '0'; 
     
-    // Победный звук (небольшое арпеджио)
+    // Отрисовываем коллаж
+    collageContainer.innerHTML = ''; 
+    capturedImages.forEach(imgSrc => {
+        const img = document.createElement('img');
+        img.src = imgSrc;
+        collageContainer.appendChild(img);
+    });
+
     playBeep(440, 0.1, 'sine'); 
     setTimeout(() => playBeep(554, 0.1, 'sine'), 100);
     setTimeout(() => playBeep(659, 0.2, 'sine'), 200);
@@ -260,7 +243,6 @@ function winGame() {
     victoryScreen.classList.remove('hidden');
 }
 
-// Обработчики кнопок
 startBtn.addEventListener('click', () => {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     startScreen.classList.add('hidden');
@@ -284,7 +266,7 @@ resetBtn.addEventListener('click', () => {
 victoryRestartBtn.addEventListener('click', () => {
     victoryScreen.classList.add('hidden');
     isGameOver = false;
-    startLevel(0); // Сразу запускаем первый уровень
+    startLevel(0); 
 });
 
 // --- 5. НЕЙРОСЕТЬ MEDIAPIPE ---
@@ -334,6 +316,10 @@ pose.onResults((results) => {
         if (isPoseCorrect) {
             clearInterval(timerInterval);
             
+            // ДЕЛАЕМ СНИМОК! Сохраняем текущий кадр в массив
+            const snapshotUrl = canvasElement.toDataURL('image/jpeg', 0.8);
+            capturedImages.push(snapshotUrl);
+
             playBeep(800, 0.2, 'sine');
             setTimeout(() => playBeep(1000, 0.3, 'sine'), 150);
             
