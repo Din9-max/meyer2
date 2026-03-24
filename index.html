@@ -32,9 +32,13 @@
     </div>
 
     <div id="victoryScreen" class="modal-overlay hidden">
-        <div class="modal-content">
+        <div class="modal-content victory-content">
             <h2>Победа! 🎉</h2>
-            <p>Отличная работа! Ты успешно повторил все позы.</p>
+            <p>Отличная работа! Вот твои лучшие моменты:</p>
+            
+            <div id="collageContainer" class="collage-container">
+                </div>
+
             <div class="buttons-container">
                 <button id="victoryRestartBtn">Начать игру снова</button>
             </div>
@@ -42,7 +46,6 @@
     </div>
 
     <div class="game-container">
-        
         <div id="levelIndicator">Уровень 1 / ?</div>
 
         <div id="silhouette-container">
