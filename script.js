@@ -10,8 +10,8 @@ const gameOverScreen = document.getElementById('gameOverScreen');
 
 // Кнопки
 const startBtn = document.getElementById('startBtn');
-const retryLevelBtn = document.getElementById('retryLevelBtn'); // НОВОЕ
-const restartGameBtn = document.getElementById('restartGameBtn'); // НОВОЕ
+const retryBtn = document.getElementById('retryBtn');
+const restartBtn = document.getElementById('restartBtn');
 
 // --- АУДИО ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -19,9 +19,8 @@ function playBeep(f, d, t = 'sine') {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = t;
-    osc.frequency.setValueAtTime(f, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    osc.type = t; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d);
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + d);
@@ -43,21 +42,12 @@ let currentLevelIndex = 0, timeLeft = 0, timerInterval, isGameOver = false, game
 
 function startLevel(index) {
     if (index >= levels.length) {
-        clearInterval(timerInterval);
-        timerDiv.innerText = "--";
-        levelIndicator.innerText = "ПОБЕДА!";
-        isGameOver = true;
-        
-        playBeep(500, 0.2);
-        setTimeout(() => playBeep(650, 0.2), 200);
-        setTimeout(() => playBeep(800, 0.4), 400);
-        return;
+        levelIndicator.innerText = "ЧЕМПИОН!";
+        isGameOver = true; return;
     }
-    
     currentLevelIndex = index;
     silhouetteImg.src = levels[index].image;
     timeLeft = levels[index].timeAllowed;
-    levelIndicator.style.opacity = '1';
     levelIndicator.innerText = `Уровень ${index + 1} из ${levels.length}`;
     
     clearInterval(timerInterval);
@@ -76,25 +66,26 @@ function loseGame() {
 }
 
 // --- ОБРАБОТЧИКИ КНОПОК ---
+// 1. Старт игры
 startBtn.onclick = () => { 
     startScreen.classList.add('hidden'); 
     gameStarted = true; 
     startLevel(0); 
 };
 
-// Кнопка 1: Попробовать текущую позу снова
-retryLevelBtn.onclick = () => {
-    gameOverScreen.classList.add('hidden');
-    isGameOver = false;
-    startLevel(currentLevelIndex); // Запускаем уровень с текущим индексом
+// 2. Попробовать снова (Текущий уровень)
+retryBtn.onclick = () => { 
+    gameOverScreen.classList.add('hidden'); 
+    isGameOver = false; 
+    startLevel(currentLevelIndex); // Запускаем тот же уровень
 };
 
-// Кнопка 2: Начать вообще заново
-restartGameBtn.onclick = () => {
-    gameOverScreen.classList.add('hidden');
-    startScreen.classList.remove('hidden'); // Показываем стартовое окно
-    isGameOver = true; // Игра в режиме ожидания старта
-    gameStarted = false;
+// 3. Начать заново (Сброс на стартовый экран)
+restartBtn.onclick = () => { 
+    gameOverScreen.classList.add('hidden'); 
+    startScreen.classList.remove('hidden'); // Показываем экран "Начать игру"
+    isGameOver = true; 
+    gameStarted = false; 
 };
 
 // --- НЕЙРОСЕТЬ ---
@@ -117,6 +108,7 @@ pose.onResults((results) => {
     if (gameStarted && !isGameOver && results.poseLandmarks) {
         const pts = results.poseLandmarks;
         
+        // АВТО-МАСШТАБ
         if (pts[11].visibility > 0.6 && pts[27].visibility > 0.6) {
             let pHeight = Math.abs(pts[27].y - pts[11].y) * window.innerHeight;
             silhouetteImg.style.height = (pHeight * 1.5) + "px";
@@ -124,11 +116,9 @@ pose.onResults((results) => {
 
         if (levels[currentLevelIndex].checkPose(pts)) {
             clearInterval(timerInterval);
-            
             silhouetteImg.style.filter = "drop-shadow(0 0 30px #27ae60) brightness(1.5)";
             silhouetteImg.style.opacity = "0.8";
             playBeep(800, 0.2);
-            
             setTimeout(() => {
                 silhouetteImg.style.filter = "drop-shadow(0 0 10px rgba(255,255,255,0.5))";
                 silhouetteImg.style.opacity = "0.35";
