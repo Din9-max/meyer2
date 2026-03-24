@@ -1,3 +1,4 @@
+// --- 1. ИНИЦИАЛИЗАЦИЯ ЭЛЕМЕНТОВ ---
 const videoElement = document.getElementById('videoElement');
 const canvasElement = document.getElementById('outputCanvas');
 const canvasCtx = canvasElement.getContext('2d');
@@ -7,126 +8,323 @@ const levelIndicator = document.getElementById('levelIndicator');
 
 const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
-
-// Кнопки
 const startBtn = document.getElementById('startBtn');
-const retryBtn = document.getElementById('retryBtn');
 const restartBtn = document.getElementById('restartBtn');
+const resetBtn = document.getElementById('resetBtn');
 
-// --- АУДИО ---
+// --- 2. ГЕНЕРАТОР ЗВУКА (Web Audio API) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playBeep(f, d, t = 'sine') {
+
+function playBeep(frequency, duration, type = 'sine') {
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = t; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + d);
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+    
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + duration);
 }
 
-// --- УРОВНИ ---
+// --- 3. МАССИВ С УРОВНЯМИ (ПОЗАМИ) ---
 const levels = [
-    { image: "pose1.png", timeAllowed: 20, checkPose: (pts) => { const bodyScale = (dist(pts[11], pts[12]) + dist(pts[23], pts[24])) / 2; return pts[15].y < pts[11].y && Math.abs(pts[15].x - pts[11].x) < bodyScale * 0.5 && pts[16].y > pts[24].y; } },
-    { image: "pose6.png", timeAllowed: 18, checkPose: (pts) => { const torso = dist(pts[11], pts[23]); const avgS = (pts[11].y + pts[12].y) / 2, avgH = (pts[23].y + pts[24].y) / 2; return Math.abs(avgH - avgS) < torso * 0.7 && Math.max(pts[15].y, pts[16].y) > avgH; } },
-    { image: "pose3.png", timeAllowed: 15, checkPose: (pts) => { const bodyScale = (dist(pts[11], pts[12]) + dist(pts[23], pts[24])) / 2; return dist(pts[16], pts[24]) < bodyScale * 0.7 && Math.abs(pts[15].x - pts[11].x) > bodyScale * 0.8; } },
-    { image: "pose4.png", timeAllowed: 15, checkPose: (pts) => { const torso = dist(pts[11], pts[23]); return dist(pts[15], pts[16]) > torso * 1.2 && Math.abs(pts[11].x - pts[23].x) > torso * 0.3; } },
-    { image: "pose5.png", timeAllowed: 12, checkPose: (pts) => { const torso = dist(pts[11], pts[23]); return pts[16].y < (pts[12].y - torso * 0.4) && Math.abs((pts[11].x+pts[12].x)/2 - (pts[23].x+pts[24].x)/2) > torso * 0.25; } }
+    {
+        // УРОВЕНЬ 1: Скрученный Треугольник
+        image: "pose1.png",
+        timeAllowed: 20,    
+        checkPose: function(landmarks) {
+            const leftShoulder = landmarks[11], rightShoulder = landmarks[12];
+            const leftWrist = landmarks[15], rightWrist = landmarks[16]; 
+            const leftHip = landmarks[23], rightHip = landmarks[24];
+            const rightAnkle = landmarks[28], rightFoot = landmarks[32];  
+
+            const pointsToCheck = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip, rightAnkle, rightFoot];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.5) return false; 
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            const bodyScale = (distance(leftShoulder, rightShoulder) + distance(leftHip, rightHip)) / 2;
+
+            const wristAboveShoulder = leftWrist.y < leftShoulder.y;
+            const wristVerticallyAligned = Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5);
+            const rightWristBelowHip = rightWrist.y > rightHip.y;
+            const rightWristCloseToFoot = distance(rightWrist, rightAnkle) < (bodyScale * 2.0);
+            const shouldersAlignedCorrectly = leftShoulder.y < rightShoulder.y;
+
+            return wristAboveShoulder && wristVerticallyAligned && rightWristBelowHip && rightWristCloseToFoot && shouldersAlignedCorrectly;
+        }
+    },
+    {
+        // УРОВЕНЬ 2: Уверенная А-стойка
+       image: "pose6.png", 
+        timeAllowed: 15,    
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; 
+            const lw = landmarks[15], rw = landmarks[16]; 
+            const lh = landmarks[23], rh = landmarks[24]; 
+            const lk = landmarks[25], rk = landmarks[26]; 
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, lk, rk];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.4) return false;
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            
+            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
+
+            const avgShoulderY = (ls.y + rs.y) / 2;
+            const avgHipY = (lh.y + rh.y) / 2;
+
+            const torsoBentForward = Math.abs(avgHipY - avgShoulderY) < (torsoLength * 0.7);
+
+            const lowestWrist = lw.y > rw.y ? lw : rw;   
+            const highestWrist = lw.y < rw.y ? lw : rw;  
+
+            const oneArmDown = lowestWrist.y > avgHipY;
+            const oneArmUp = highestWrist.y < (avgHipY + torsoLength * 0.2);
+            const armsSpread = Math.abs(lowestWrist.x - highestWrist.x) > (torsoLength * 1.0);
+
+            return torsoBentForward && oneArmDown && oneArmUp && armsSpread;
+        }
+    },
+    {
+        // УРОВЕНЬ 3: Правая рука на талии, левая вытянута
+        image: "pose3.png", 
+        timeAllowed: 12,    
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; 
+            const lw = landmarks[15], rw = landmarks[16]; 
+            const lh = landmarks[23], rh = landmarks[24]; 
+            const la = landmarks[27], ra = landmarks[28]; 
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.5) return false;
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            const bodyScale = (distance(ls, rs) + distance(lh, rh)) / 2;
+
+            const rightHandOnHip = distance(rw, rh) < (bodyScale * 0.7);
+            const leftArmExtended = Math.abs(lw.x - ls.x) > (bodyScale * 0.8);
+            const leftArmUp = lw.y < (ls.y + bodyScale * 0.2);
+            const legsApart = Math.abs(la.x - ra.x) > (bodyScale * 0.9);
+
+            return rightHandOnHip && leftArmExtended && leftArmUp && legsApart;
+        }
+    },
+    {
+        // УРОВЕНЬ 4: Старт бегуна / Глубокий выпад
+        image: "pose4.png", 
+        timeAllowed: 15,    
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; 
+            const lw = landmarks[15], rw = landmarks[16]; 
+            const lh = landmarks[23], rh = landmarks[24]; 
+            const la = landmarks[27], ra = landmarks[28]; 
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.4) return false; 
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+
+            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
+
+            const armsSpread = distance(lw, rw) > (torsoLength * 1.2);
+            const handsBelowShoulders = (lw.y > ls.y) && (rw.y > rs.y);
+            const torsoLeaning = Math.abs(ls.x - lh.x) > (torsoLength * 0.3);
+
+            const averageHipY = (lh.y + rh.y) / 2;
+            const averageAnkleY = (la.y + ra.y) / 2;
+            const kneesBent = Math.abs(averageHipY - averageAnkleY) < (torsoLength * 1.3);
+
+            return armsSpread && handsBelowShoulders && torsoLeaning && kneesBent;
+        }
+    },
+    {
+        // УРОВЕНЬ 5: Отклонение назад с поднятой рукой
+        image: "pose5.png", 
+        timeAllowed: 15,    
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; 
+            const lw = landmarks[15], rw = landmarks[16]; 
+            const lh = landmarks[23], rh = landmarks[24]; 
+            const la = landmarks[27], ra = landmarks[28]; 
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.4) return false; 
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            
+            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
+
+            const rightArmUp = rw.y < (rs.y - torsoLength * 0.4);
+            const leftArmDown = lw.y > lh.y;
+
+            const midShoulderX = (ls.x + rs.x) / 2;
+            const midHipX = (lh.x + rh.x) / 2;
+            const leaning = Math.abs(midShoulderX - midHipX) > (torsoLength * 0.25);
+            const legsApart = Math.abs(la.x - ra.x) > (torsoLength * 0.7);
+
+            return rightArmUp && leftArmDown && leaning && legsApart;
+        }
+    }
 ];
 
-function dist(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
-
-// --- ЛОГИКА ИГРЫ ---
-let currentLevelIndex = 0, timeLeft = 0, timerInterval, isGameOver = false, gameStarted = false;
+// --- 4. УПРАВЛЕНИЕ ИГРОЙ ---
+let currentLevelIndex = 0;
+let timeLeft = 0;
+let timerInterval;
+let isGameOver = false;
+let gameStarted = false; 
 
 function startLevel(index) {
     if (index >= levels.length) {
-        levelIndicator.innerText = "ЧЕМПИОН!";
-        isGameOver = true; return;
+        timerDiv.innerText = "ПОБЕДА!";
+        timerDiv.classList.remove('danger');
+        levelIndicator.style.opacity = '0'; 
+        isGameOver = true;
+        return;
     }
+    
     currentLevelIndex = index;
-    silhouetteImg.src = levels[index].image;
-    timeLeft = levels[index].timeAllowed;
-    levelIndicator.innerText = `Уровень ${index + 1} из ${levels.length}`;
+    let levelConfig = levels[currentLevelIndex];
+    
+    levelIndicator.style.opacity = '1';
+    levelIndicator.innerText = `Уровень ${currentLevelIndex + 1} из ${levels.length}`;
+    silhouetteImg.src = levelConfig.image;
+    timeLeft = levelConfig.timeAllowed;
+    
+    updateTimerDisplay();
     
     clearInterval(timerInterval);
     timerInterval = setInterval(() => {
-        timeLeft--; timerDiv.innerText = timeLeft;
-        if (timeLeft <= 5) { timerDiv.classList.add('danger'); playBeep(600, 0.1, 'triangle'); }
-        else { timerDiv.classList.remove('danger'); playBeep(400, 0.05); }
-        if (timeLeft <= 0) loseGame();
+        timeLeft--;
+        updateTimerDisplay();
+        
+        if (timeLeft > 0) {
+            if (timeLeft <= 10) {
+                playBeep(600, 0.15, 'triangle'); 
+            } else {
+                playBeep(400, 0.1, 'sine');      
+            }
+        }
+        
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            loseGame();
+        }
     }, 1000);
 }
 
+function updateTimerDisplay() {
+    timerDiv.innerText = timeLeft;
+    if (timeLeft <= 10) {
+        timerDiv.classList.add('danger');
+    } else {
+        timerDiv.classList.remove('danger');
+    }
+}
+
 function loseGame() {
-    isGameOver = true; clearInterval(timerInterval);
-    playBeep(150, 0.5, 'sawtooth');
+    isGameOver = true;
+    timerDiv.innerText = "0";
+    playBeep(200, 0.5, 'sawtooth'); 
     gameOverScreen.classList.remove('hidden');
 }
 
-// --- ОБРАБОТЧИКИ КНОПОК ---
-// 1. Старт игры
-startBtn.onclick = () => { 
-    startScreen.classList.add('hidden'); 
-    gameStarted = true; 
-    startLevel(0); 
-};
+startBtn.addEventListener('click', () => {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    startScreen.classList.add('hidden');
+    gameStarted = true;
+    startLevel(0);
+});
 
-// 2. Попробовать снова (Текущий уровень)
-retryBtn.onclick = () => { 
-    gameOverScreen.classList.add('hidden'); 
-    isGameOver = false; 
-    startLevel(currentLevelIndex); // Запускаем тот же уровень
-};
+restartBtn.addEventListener('click', () => {
+    gameOverScreen.classList.add('hidden');
+    isGameOver = false;
+    startLevel(currentLevelIndex); 
+});
 
-// 3. Начать заново (Сброс на стартовый экран)
-restartBtn.onclick = () => { 
-    gameOverScreen.classList.add('hidden'); 
-    startScreen.classList.remove('hidden'); // Показываем экран "Начать игру"
-    isGameOver = true; 
+resetBtn.addEventListener('click', () => {
+    gameOverScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden'); 
+    isGameOver = false;
     gameStarted = false; 
-};
+});
 
-// --- НЕЙРОСЕТЬ ---
-const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
-pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5 });
+// --- 5. НЕЙРОСЕТЬ MEDIAPIPE ---
+const pose = new Pose({locateFile: (file) => {
+  return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+}});
+
+pose.setOptions({
+  modelComplexity: 1,
+  smoothLandmarks: true,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
+});
 
 pose.onResults((results) => {
-    if (canvasElement.width !== window.innerWidth) {
-        canvasElement.width = window.innerWidth; canvasElement.height = window.innerHeight;
+    if (canvasElement.width !== window.innerWidth || canvasElement.height !== window.innerHeight) {
+        canvasElement.width = window.innerWidth;
+        canvasElement.height = window.innerHeight;
     }
+
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     
-    let vR = results.image.width / results.image.height, cR = canvasElement.width / canvasElement.height;
-    let sw = vR > cR ? results.image.height * cR : results.image.width;
-    let sh = vR > cR ? results.image.height : results.image.width / cR;
-    canvasCtx.drawImage(results.image, (results.image.width-sw)/2, (results.image.height-sh)/2, sw, sh, 0, 0, canvasElement.width, canvasElement.height);
+    let videoRatio = results.image.width / results.image.height;
+    let canvasRatio = canvasElement.width / canvasElement.height;
+    let sx, sy, sw, sh;
+
+    if (canvasRatio > videoRatio) {
+        sw = results.image.width;
+        sh = sw / canvasRatio;
+        sx = 0;
+        sy = (results.image.height - sh) / 2;
+    } else {
+        sh = results.image.height;
+        sw = sh * canvasRatio;
+        sx = (results.image.width - sw) / 2;
+        sy = 0;
+    }
+
+    canvasCtx.drawImage(results.image, sx, sy, sw, sh, 0, 0, canvasElement.width, canvasElement.height);
     canvasCtx.restore();
 
     if (gameStarted && !isGameOver && results.poseLandmarks) {
-        const pts = results.poseLandmarks;
+        let currentLevelConfig = levels[currentLevelIndex];
+        let isPoseCorrect = currentLevelConfig.checkPose(results.poseLandmarks);
         
-        // АВТО-МАСШТАБ
-        if (pts[11].visibility > 0.6 && pts[27].visibility > 0.6) {
-            let pHeight = Math.abs(pts[27].y - pts[11].y) * window.innerHeight;
-            silhouetteImg.style.height = (pHeight * 1.5) + "px";
-        }
-
-        if (levels[currentLevelIndex].checkPose(pts)) {
+        if (isPoseCorrect) {
             clearInterval(timerInterval);
-            silhouetteImg.style.filter = "drop-shadow(0 0 30px #27ae60) brightness(1.5)";
-            silhouetteImg.style.opacity = "0.8";
-            playBeep(800, 0.2);
-            setTimeout(() => {
-                silhouetteImg.style.filter = "drop-shadow(0 0 10px rgba(255,255,255,0.5))";
-                silhouetteImg.style.opacity = "0.35";
-                startLevel(currentLevelIndex + 1);
-            }, 600);
+            
+            playBeep(800, 0.2, 'sine');
+            setTimeout(() => playBeep(1000, 0.3, 'sine'), 150);
+            
+            startLevel(currentLevelIndex + 1);
         }
     }
 });
 
-const camera = new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); } });
+// --- 6. ЗАПУСК КАМЕРЫ ---
+const camera = new Camera(videoElement, {
+  onFrame: async () => {
+    await pose.send({image: videoElement});
+  }
+});
 camera.start();
