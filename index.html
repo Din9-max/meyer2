@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pose Master Pro</title>
+    <title>Игра: Повтори Позу</title>
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -13,8 +13,9 @@
 
     <div id="startScreen" class="modal-overlay">
         <div class="modal-content">
-            <h1>Повтори позу</h1>
-            <p>Встань так, чтобы тебя было видно в полный рост. Силуэт сам подстроится под твои габариты. Удачи!</p>
+            <h2>Повтори позу</h2>
+            <p>Включай камеру, отойди подальше, чтобы тебя было видно в полный рост, и постарайся в точности повторить черный силуэт на экране.</p>
+            <p>С каждым уровнем времени будет даваться всё меньше!</p>
             <button id="startBtn">Начать игру</button>
         </div>
     </div>
@@ -22,24 +23,26 @@
     <div id="gameOverScreen" class="modal-overlay hidden">
         <div class="modal-content">
             <h2>Время вышло!</h2>
-            <p>Не сдавайся, у тебя обязательно получится.</p>
-            <div class="button-group">
-                <button id="retryBtn">Попробовать снова</button>
-                <button id="restartBtn" class="secondary-btn">Начать заново</button>
+            <p>Ты не успел принять нужную позу.</p>
+            <div class="buttons-container">
+                <button id="restartBtn">Попробовать снова</button>
+                <button id="resetBtn">Начать заново</button>
             </div>
         </div>
     </div>
 
     <div class="game-container">
-        <div id="levelIndicator">Загрузка...</div>
         
+        <div id="levelIndicator">Уровень 1 / ?</div>
+
         <div id="silhouette-container">
-            <img id="silhouette" src="" alt="Контур">
+            <img id="silhouette" src="" alt="Поза для повторения">
         </div>
         
-        <div id="timer">--</div>
+        <div id="timer">Ожидание...</div>
 
         <video id="videoElement" autoplay playsinline style="display: none;"></video>
+        
         <canvas id="outputCanvas"></canvas>
     </div>
 
