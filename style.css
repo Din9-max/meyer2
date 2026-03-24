@@ -45,7 +45,7 @@ body {
     z-index: 10;
     background: #ffffff;
     padding: 15px;
-    border: 2px solid #e0e0e0; /* Светло-серая рамка */
+    border: 2px solid #e0e0e0;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
@@ -84,7 +84,7 @@ body {
     100% { transform: scale(1); }
 }
 
-/* Оформление модальных окон (старт и проигрыш) */
+/* Оформление модальных окон (старт, проигрыш, победа) */
 .modal-overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
