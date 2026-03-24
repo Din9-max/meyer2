@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pose Master Pro</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div id="startScreen" class="modal-overlay">
+        <div class="modal-content">
+            <h1>Повтори позу</h1>
+            <p>Встань так, чтобы тебя было видно в полный рост. Силуэт сам подстроится под твои габариты. Удачи!</p>
+            <button id="startBtn">Начать игру</button>
+        </div>
+    </div>
+
+    <div id="gameOverScreen" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>Время вышло!</h2>
+            <p>Не сдавайся, у тебя обязательно получится.</p>
+            <div class="button-group">
+                <button id="retryLevelBtn">Попробовать снова (Текущая поза)</button>
+                <button id="restartGameBtn" class="secondary-btn">Начать заново (С 1 уровня)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div id="levelIndicator">Загрузка...</div>
+        
+        <div id="silhouette-container">
+            <img id="silhouette" src="" alt="Контур">
+        </div>
+        
+        <div id="timer">--</div>
+
+        <video id="videoElement" autoplay playsinline style="display: none;"></video>
+        <canvas id="outputCanvas"></canvas>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
