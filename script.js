@@ -40,28 +40,6 @@ function playBeep(frequency, duration, type = 'sine') {
 // --- 3. МАССИВ С УРОВНЯМИ ---
 const levels = [
     {
-        image: "pose1.png",
-        timeAllowed: 20,    
-        checkPose: function(landmarks) {
-            const leftShoulder = landmarks[11], rightShoulder = landmarks[12];
-            const leftWrist = landmarks[15], rightWrist = landmarks[16]; 
-            const leftHip = landmarks[23], rightHip = landmarks[24];
-            const rightAnkle = landmarks[28], rightFoot = landmarks[32];  
-
-            const pointsToCheck = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip, rightAnkle, rightFoot];
-            for (let i = 0; i < pointsToCheck.length; i++) {
-                if (pointsToCheck[i].visibility < 0.5) return false; 
-            }
-
-            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
-            const bodyScale = (distance(leftShoulder, rightShoulder) + distance(leftHip, rightHip)) / 2;
-
-            return leftWrist.y < leftShoulder.y && Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5) && 
-                   rightWrist.y > rightHip.y && distance(rightWrist, rightAnkle) < (bodyScale * 2.0) && 
-                   leftShoulder.y < rightShoulder.y;
-        }
-    },
-    {
        image: "pose6.png", 
         timeAllowed: 15,    
         checkPose: function(landmarks) {
@@ -88,6 +66,28 @@ const levels = [
                    Math.abs(lowestWrist.x - highestWrist.x) > (torsoLength * 1.0);
         }
     },
+    {
+        image: "pose1.png",
+        timeAllowed: 20,    
+        checkPose: function(landmarks) {
+            const leftShoulder = landmarks[11], rightShoulder = landmarks[12];
+            const leftWrist = landmarks[15], rightWrist = landmarks[16]; 
+            const leftHip = landmarks[23], rightHip = landmarks[24];
+            const rightAnkle = landmarks[28], rightFoot = landmarks[32];  
+
+            const pointsToCheck = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip, rightAnkle, rightFoot];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.5) return false; 
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            const bodyScale = (distance(leftShoulder, rightShoulder) + distance(leftHip, rightHip)) / 2;
+
+            return leftWrist.y < leftShoulder.y && Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5) && 
+                   rightWrist.y > rightHip.y && distance(rightWrist, rightAnkle) < (bodyScale * 2.0) && 
+                   leftShoulder.y < rightShoulder.y;
+        }
+    }
     {
         image: "pose3.png", 
         timeAllowed: 12,    
