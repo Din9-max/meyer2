@@ -11,6 +11,9 @@ const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const victoryScreen = document.getElementById('victoryScreen');
 
+const imageViewerScreen = document.getElementById('imageViewerScreen');
+const closeImageViewerBtn = document.getElementById('closeImageViewerBtn');
+
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
 const resetBtn = document.getElementById('resetBtn');
@@ -164,10 +167,10 @@ let timeLeft = 0;
 let timerInterval;
 let isGameOver = false;
 let gameStarted = false; 
-let capturedImages = []; // Массив для хранения победных снимков
+let capturedImages = []; 
+let isCapturing = false; // Флаг для блокировки моментального снимка
 
 function startLevel(index) {
-    // Если начинаем с первого уровня, очищаем галерею
     if (index === 0) {
         capturedImages = [];
     }
@@ -234,6 +237,10 @@ function winGame() {
     capturedImages.forEach(imgSrc => {
         const img = document.createElement('img');
         img.src = imgSrc;
+        img.addEventListener('click', () => {
+            document.getElementById('enlargedImage').src = imgSrc;
+            imageViewerScreen.classList.remove('hidden');
+        });
         collageContainer.appendChild(img);
     });
 
@@ -268,6 +275,17 @@ victoryRestartBtn.addEventListener('click', () => {
     victoryScreen.classList.add('hidden');
     isGameOver = false;
     startLevel(0); 
+});
+
+// Обработчики для окна просмотра фото
+closeImageViewerBtn.addEventListener('click', () => {
+    imageViewerScreen.classList.add('hidden');
+});
+
+imageViewerScreen.addEventListener('click', (e) => {
+    if (e.target === imageViewerScreen) {
+        imageViewerScreen.classList.add('hidden');
+    }
 });
 
 // --- 5. НЕЙРОСЕТЬ MEDIAPIPE ---
@@ -310,21 +328,31 @@ pose.onResults((results) => {
     canvasCtx.drawImage(results.image, sx, sy, sw, sh, 0, 0, canvasElement.width, canvasElement.height);
     canvasCtx.restore();
 
-    if (gameStarted && !isGameOver && results.poseLandmarks) {
+    // Проверка с задержкой в 1 секунду
+    if (gameStarted && !isGameOver && !isCapturing && results.poseLandmarks) {
         let currentLevelConfig = levels[currentLevelIndex];
         let isPoseCorrect = currentLevelConfig.checkPose(results.poseLandmarks);
         
         if (isPoseCorrect) {
-            clearInterval(timerInterval);
+            isCapturing = true; // Блокируем новые проверки, пока ждем
+            clearInterval(timerInterval); // Останавливаем таймер
             
-            // ДЕЛАЕМ СНИМОК! Сохраняем текущий кадр в массив
-            const snapshotUrl = canvasElement.toDataURL('image/jpeg', 0.8);
-            capturedImages.push(snapshotUrl);
+            // Издаем короткий звук-подсказку, чтобы игрок понял, что нужно замереть
+            playBeep(600, 0.1, 'sine');
+            
+            // Ждем 1 секунду перед снимком
+            setTimeout(() => {
+                // ДЕЛАЕМ СНИМОК! Сохраняем текущий кадр в массив
+                const snapshotUrl = canvasElement.toDataURL('image/jpeg', 0.8);
+                capturedImages.push(snapshotUrl);
 
-            playBeep(800, 0.2, 'sine');
-            setTimeout(() => playBeep(1000, 0.3, 'sine'), 150);
-            
-            startLevel(currentLevelIndex + 1);
+                // Звук успешного прохождения уровня
+                playBeep(800, 0.2, 'sine');
+                setTimeout(() => playBeep(1000, 0.3, 'sine'), 150);
+                
+                isCapturing = false; // Сбрасываем флаг для следующего уровня
+                startLevel(currentLevelIndex + 1);
+            }, 1000); // 1000 мс = 1 секунда
         }
     }
 });
