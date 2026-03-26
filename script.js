@@ -110,6 +110,29 @@ const levels = [
         }
     },
     {
+        image: "pose5.png", 
+        timeAllowed: 15,    
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; 
+            const lw = landmarks[15], rw = landmarks[16]; 
+            const lh = landmarks[23], rh = landmarks[24]; 
+            const la = landmarks[27], ra = landmarks[28]; 
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.4) return false; 
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
+
+            return rw.y < (rs.y - torsoLength * 0.4) && lw.y > lh.y && 
+                   Math.abs((ls.x + rs.x) / 2 - (lh.x + rh.x) / 2) > (torsoLength * 0.25) && 
+                   Math.abs(la.x - ra.x) > (torsoLength * 0.7);
+        }
+    }
+    ,
+    {
         image: "pose4.png", 
         timeAllowed: 15,    
         checkPose: function(landmarks) {
@@ -131,28 +154,6 @@ const levels = [
             return distance(lw, rw) > (torsoLength * 1.2) && (lw.y > ls.y) && (rw.y > rs.y) && 
                    Math.abs(ls.x - lh.x) > (torsoLength * 0.3) && 
                    Math.abs(averageHipY - averageAnkleY) < (torsoLength * 1.3);
-        }
-    },
-    {
-        image: "pose5.png", 
-        timeAllowed: 15,    
-        checkPose: function(landmarks) {
-            const ls = landmarks[11], rs = landmarks[12]; 
-            const lw = landmarks[15], rw = landmarks[16]; 
-            const lh = landmarks[23], rh = landmarks[24]; 
-            const la = landmarks[27], ra = landmarks[28]; 
-
-            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
-            for (let i = 0; i < pointsToCheck.length; i++) {
-                if (pointsToCheck[i].visibility < 0.4) return false; 
-            }
-
-            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
-            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
-
-            return rw.y < (rs.y - torsoLength * 0.4) && lw.y > lh.y && 
-                   Math.abs((ls.x + rs.x) / 2 - (lh.x + rh.x) / 2) > (torsoLength * 0.25) && 
-                   Math.abs(la.x - ra.x) > (torsoLength * 0.7);
         }
     }
 ];
