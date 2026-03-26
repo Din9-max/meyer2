@@ -87,7 +87,7 @@ const levels = [
                    rightWrist.y > rightHip.y && distance(rightWrist, rightAnkle) < (bodyScale * 2.0) && 
                    leftShoulder.y < rightShoulder.y;
         }
-    }
+    },
     {
         image: "pose3.png", 
         timeAllowed: 12,    
